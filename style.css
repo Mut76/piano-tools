@@ -281,6 +281,9 @@ button.secondary{
   width:100%;
   margin-bottom:14px;
 }
+#miniGrid{
+  width:100%;
+}
 .chord-block-label{
   font-size:14px;
   font-weight:600;
