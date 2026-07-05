@@ -279,7 +279,6 @@ button.secondary{
 
 .chord-block{
   width:100%;
-  max-width:480px;
   margin-bottom:14px;
 }
 .chord-block-label{
@@ -289,19 +288,21 @@ button.secondary{
 }
 .chord-forms-row{
   display:flex;
-  gap:6px;
+  gap:8px;
+  width:100%;
 }
 .form-mini{
   flex:1;
+  min-width:0;
   background:var(--panel);
   border:1px solid var(--border);
   border-radius:8px;
-  padding:4px;
+  padding:6px;
 }
 .form-mini .mini-label{
-  font-size:10px;
-  margin-bottom:4px;
+  font-size:11px;
+  margin-bottom:6px;
 }
 .form-mini .keyboard-mini{
-  height:50px;
+  height:100px;
 }
