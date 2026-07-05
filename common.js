@@ -169,6 +169,7 @@ function playScaleSound(indices){
     osc.stop(t0+0.32);
   });
 }
+function playSuccessSound(){
   const ctx = getCtx();
   const now = ctx.currentTime;
   const freqs = [523.25, 659.25, 783.99, 1046.5];
