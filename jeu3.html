@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Accords éligibles</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Accords éligibles</h1>
+
+<div class="message">Sélectionne 1 à 3 notes.</div>
+
+<div class="note-grid" id="noteGrid"></div>
+
+<div id="miniGrid"></div>
+
+<button class="footer-btn secondary" id="settingsBtn">Accueil</button>
+
+<script src="common.js"></script>
+<script>
+const noteGridEl = document.getElementById('noteGrid');
+const miniGridEl = document.getElementById('miniGrid');
+const selectedNotes = new Set();
+
+noteNames.forEach(n=>{
+  const btn = document.createElement('div');
+  btn.className = 'note-btn';
+  btn.textContent = n;
+  btn.dataset.note = n;
+  btn.addEventListener('click', ()=>toggleNote(n, btn));
+  noteGridEl.appendChild(btn);
+});
+
+function toggleNote(note, btn){
+  if(selectedNotes.has(note)){
+    selectedNotes.delete(note);
+    btn.classList.remove('selected');
+  } else {
+    if(selectedNotes.size>=3) return;
+    selectedNotes.add(note);
+    btn.classList.add('selected');
+  }
+  updateMatches();
+}
+
+function drawOnMiniKeyboard(keyEls, notes){
+  let prevIdx = 0;
+  notes.forEach(note=>{
+    let base = noteNames.indexOf(note)+1;
+    let idx = base;
+    if(idx <= prevIdx) idx += 12;
+    prevIdx = idx;
+    if(keyEls[idx]) keyEls[idx].classList.add('selected');
+  });
+}
+
+function updateMatches(){
+  miniGridEl.innerHTML = '';
+
+  if(selectedNotes.size===0) return;
+
+  const inputNotes = Array.from(selectedNotes);
+  const matches = chordsBank.filter(chord=>{
+    const chordSet = chord[1]; // notes de la fondamentale = même set de classes de hauteur pour les 3 états
+    return inputNotes.every(n=> chordSet.includes(n));
+  });
+
+  if(matches.length===0){
+    const div = document.createElement('div');
+    div.className = 'message';
+    div.textContent = 'Aucun accord ne correspond.';
+    miniGridEl.appendChild(div);
+    return;
+  }
+
+  matches.forEach(chord=>{
+    const block = document.createElement('div');
+    block.className = 'chord-block';
+
+    const label = document.createElement('div');
+    label.className = 'chord-block-label';
+    label.textContent = chord[0];
+    block.appendChild(label);
+
+    const row = document.createElement('div');
+    row.className = 'chord-forms-row';
+
+    for(let formIndex=0; formIndex<3; formIndex++){
+      const formMini = document.createElement('div');
+      formMini.className = 'form-mini';
+      const miniLabel = document.createElement('div');
+      miniLabel.className = 'mini-label';
+      miniLabel.textContent = formLabel(chord[0], formIndex);
+      const kb = document.createElement('div');
+      kb.className = 'keyboard keyboard-mini';
+      formMini.appendChild(miniLabel);
+      formMini.appendChild(kb);
+      row.appendChild(formMini);
+      const miniKeyEls = buildKeyboard(kb, null);
+      drawOnMiniKeyboard(miniKeyEls, chord[formIndex+1]);
+    }
+
+    block.appendChild(row);
+    miniGridEl.appendChild(block);
+  });
+}
+
+document.getElementById('settingsBtn').addEventListener('click', ()=>{ window.location.href = 'index.html'; });
+</script>
+
+</body>
+</html>

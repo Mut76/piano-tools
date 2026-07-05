@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Gammes</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Gammes</h1>
+
+<div class="message">Choisis une note fondamentale et le type de gamme.</div>
+
+<div class="note-grid" id="noteGrid"></div>
+
+<div class="state-row" id="typeRow">
+  <button class="state-btn selected" data-type="majeur">Majeur</button>
+  <button class="state-btn" data-type="mineur">Mineur</button>
+</div>
+
+<div class="keyboard" id="keyboard"></div>
+
+<button class="footer-btn secondary" id="settingsBtn">Accueil</button>
+
+<script src="common.js"></script>
+<script>
+const keyboardEl = document.getElementById('keyboard');
+const keyEls = buildKeyboard(keyboardEl, null);
+
+const noteGridEl = document.getElementById('noteGrid');
+let chosenNote = null;
+let chosenType = 'majeur';
+
+noteNames.forEach((n, i)=>{
+  const btn = document.createElement('div');
+  btn.className = 'note-btn';
+  btn.textContent = n;
+  btn.dataset.note = n;
+  btn.addEventListener('click', ()=>{
+    noteGridEl.querySelectorAll('.note-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    chosenNote = i;
+    drawScale();
+  });
+  noteGridEl.appendChild(btn);
+});
+
+document.querySelectorAll('#typeRow .state-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#typeRow .state-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    chosenType = btn.dataset.type;
+    drawScale();
+  });
+});
+
+function drawScale(){
+  resetKeyColors(keyEls);
+  if(chosenNote===null) return;
+  const scaleNotes = getScaleNotes(chosenNote, chosenType);
+  const rootNote = noteNames[chosenNote];
+  const playedIdx = [];
+  for(let idx=1; idx<=24; idx++){
+    const note = idxToNote(idx);
+    if(note === rootNote){
+      keyEls[idx].classList.add('root');
+      playedIdx.push(idx);
+    } else if(scaleNotes.includes(note)){
+      keyEls[idx].classList.add('selected');
+      playedIdx.push(idx);
+    }
+  }
+  playScaleSound(playedIdx);
+}
+
+document.getElementById('settingsBtn').addEventListener('click', ()=>{ window.location.href = 'index.html'; });
+</script>
+
+</body>
+</html>

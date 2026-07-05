@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Devine le nom</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Devine le nom de l'accord</h1>
+
+<button class="footer-btn secondary" id="homeBtn">← Accueil</button>
+
+<div class="panel" id="configPanel">
+  <div class="row" style="display:block;">
+    <label>Formes jouées</label>
+    <div class="toggle-row" id="formsToggle" style="margin-top:6px;">
+      <button class="toggle-btn selected" data-form="0">Fondamentale</button>
+      <button class="toggle-btn selected" data-form="1">Rev1</button>
+      <button class="toggle-btn selected" data-form="2">Rev2</button>
+    </div>
+  </div>
+  <div class="row">
+    <label for="duree">Temps (secondes)</label>
+    <input type="number" id="duree" value="15" min="3" max="120">
+  </div>
+  <div class="row">
+    <button id="startBtn">Commencer</button>
+  </div>
+</div>
+
+<div class="keyboard" id="keyboard"></div>
+
+<div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+<div class="message" id="message">Configure puis appuie sur Commencer.</div>
+
+<div class="note-grid" id="noteGrid"></div>
+<div class="state-row" id="qualityRow">
+  <button class="state-btn" data-quality="majeur">Majeur</button>
+  <button class="state-btn" data-quality="mineur">Mineur</button>
+</div>
+<div class="state-row" id="stateRow">
+  <button class="state-btn" data-state="0">Fondamentale</button>
+  <button class="state-btn" data-state="1">Rev1</button>
+  <button class="state-btn" data-state="2">Rev2</button>
+</div>
+<button class="footer-btn secondary" id="nextBtn" style="display:none;">Accord suivant</button>
+
+<script src="common.js"></script>
+<script>
+function parseChordName(name){
+  if(name.endsWith('m')) return { root: name.slice(0,-1), quality: 'mineur' };
+  return { root: name, quality: 'majeur' };
+}
+
+const keyboardEl = document.getElementById('keyboard');
+const keyEls = buildKeyboard(keyboardEl, null);
+
+const noteGridEl = document.getElementById('noteGrid');
+noteNames.forEach(n=>{
+  const btn = document.createElement('div');
+  btn.className = 'note-btn';
+  btn.textContent = n;
+  btn.dataset.note = n;
+  btn.addEventListener('click', ()=>selectNote(n, btn));
+  noteGridEl.appendChild(btn);
+});
+
+const stateBtns = document.querySelectorAll('#stateRow .state-btn');
+stateBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>selectState(parseInt(btn.dataset.state,10), btn));
+});
+
+const qualityBtns = document.querySelectorAll('#qualityRow .state-btn');
+qualityBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>selectQuality(btn.dataset.quality, btn));
+});
+
+const formToggleBtns = document.querySelectorAll('#formsToggle .toggle-btn');
+formToggleBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const selectedCount = document.querySelectorAll('#formsToggle .toggle-btn.selected').length;
+    if(btn.classList.contains('selected') && selectedCount<=1) return;
+    btn.classList.toggle('selected');
+  });
+});
+function getAllowedForms(){
+  return Array.from(formToggleBtns)
+    .filter(b=>b.classList.contains('selected'))
+    .map(b=>parseInt(b.dataset.form,10));
+}
+
+let target = null;
+let chosenNote = null;
+let chosenQuality = null;
+let chosenState = null;
+let timerInterval = null;
+let timeLeft = 0;
+let duration = 15;
+let roundActive = false;
+
+const timerFillEl = document.getElementById('timerFill');
+const messageEl = document.getElementById('message');
+const startBtn = document.getElementById('startBtn');
+const nextBtn = document.getElementById('nextBtn');
+const homeBtn = document.getElementById('homeBtn');
+const configPanel = document.getElementById('configPanel');
+
+function selectNote(note, btn){
+  if(!roundActive) return;
+  noteGridEl.querySelectorAll('.note-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  chosenNote = note;
+  checkReady();
+}
+function selectState(stateIdx, btn){
+  if(!roundActive) return;
+  stateBtns.forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  chosenState = stateIdx;
+  checkReady();
+}
+function selectQuality(quality, btn){
+  if(!roundActive) return;
+  qualityBtns.forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  chosenQuality = quality;
+  checkReady();
+}
+function checkReady(){
+  if(chosenNote!==null && chosenQuality!==null && chosenState!==null){
+    validateAnswer();
+  }
+}
+
+function applyScopeToStateButtons(allowedForms){
+  stateBtns.forEach(btn=>{
+    const s = parseInt(btn.dataset.state,10);
+    if(allowedForms.includes(s)){
+      btn.classList.remove('disabled');
+    } else {
+      btn.classList.add('disabled');
+      btn.classList.remove('selected');
+      if(chosenState===s) chosenState = null;
+    }
+  });
+}
+
+function drawTargetOnKeyboard(){
+  resetKeyColors(keyEls);
+  let prevIdx = 0;
+  target.notes.forEach(note=>{
+    let base = noteNames.indexOf(note)+1;
+    let idx = base;
+    if(idx <= prevIdx) idx += 12;
+    prevIdx = idx;
+    if(keyEls[idx]) keyEls[idx].classList.add('selected');
+  });
+}
+
+function startRound(){
+  duration = parseInt(document.getElementById('duree').value, 10) || 15;
+  configPanel.style.display = 'none';
+  nextBtn.style.display = 'none';
+  messageEl.textContent = "Regarde l'accord dessiné, choisis la note fondamentale et l'état.";
+
+  chosenNote = null;
+  chosenQuality = null;
+  chosenState = null;
+  noteGridEl.querySelectorAll('.note-btn').forEach(b=>b.classList.remove('selected'));
+  qualityBtns.forEach(b=>b.classList.remove('selected'));
+  stateBtns.forEach(b=>b.classList.remove('selected'));
+
+  const allowedForms = getAllowedForms();
+  applyScopeToStateButtons(allowedForms);
+
+  const chord = chordsBank[Math.floor(Math.random()*chordsBank.length)];
+  const formIndex = allowedForms[Math.floor(Math.random()*allowedForms.length)];
+  target = { name: chord[0], formIndex, notes: chord[formIndex+1] };
+  drawTargetOnKeyboard();
+  playChordNotes(chordIndices(target.notes));
+
+  timeLeft = duration;
+  timerFillEl.style.width = '100%';
+  roundActive = true;
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    timeLeft -= 0.1;
+    timerFillEl.style.width = Math.max(0,(timeLeft/duration*100))+'%';
+    if(timeLeft<=0){
+      clearInterval(timerInterval);
+      endRound(false);
+    }
+  }, 100);
+}
+
+function validateAnswer(){
+  if(!roundActive) return;
+  const parsed = parseChordName(target.name);
+  const correct = (chosenNote === parsed.root) && (chosenQuality === parsed.quality) && (chosenState === target.formIndex);
+  endRound(correct);
+}
+
+function endRound(victoire){
+  roundActive = false;
+  clearInterval(timerInterval);
+
+  if(victoire){
+    playSuccessSound();
+    messageEl.textContent = "Bravo ! C'était bien " + formLabel(target.name, target.formIndex) + ".";
+  } else {
+    playErrorSound();
+    messageEl.textContent = "Raté. La réponse était " + formLabel(target.name, target.formIndex) + ".";
+  }
+
+  nextBtn.style.display = 'block';
+}
+
+startBtn.addEventListener('click', startRound);
+nextBtn.addEventListener('click', startRound);
+homeBtn.addEventListener('click', ()=>{ window.location.href = 'index.html'; });
+</script>
+
+</body>
+</html>
