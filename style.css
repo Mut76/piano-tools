@@ -171,6 +171,10 @@ button.secondary{
   font-size:14px;
   font-weight:600;
   cursor:pointer;
+  text-align:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 .note-btn.selected{background:var(--accent); border-color:var(--accent);}
 .state-row{
@@ -307,5 +311,5 @@ button.secondary{
   margin-bottom:6px;
 }
 .form-mini .keyboard-mini{
-  height:100px;
+  height:60px;
 }
