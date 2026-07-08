@@ -121,6 +121,7 @@ function onKeyClick(idx){
     if(selected.size>=3) return;
     selected.add(idx);
     el.classList.add('selected');
+    playNoteIdx(idx);
   }
   if(selected.size===3){
     checkAnswer();

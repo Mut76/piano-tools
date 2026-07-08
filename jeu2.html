@@ -213,9 +213,30 @@ function endRound(victoire){
   } else {
     playErrorSound();
     messageEl.textContent = "Raté. La réponse était " + formLabel(target.name, target.formIndex) + ".";
+    highlightMismatches();
   }
 
   nextBtn.style.display = 'block';
+}
+
+function highlightMismatches(){
+  let guessedSet = [];
+  if(chosenNote!==null && chosenQuality!==null){
+    const guessedName = chosenNote + (chosenQuality==='mineur' ? 'm' : '');
+    const guessedChord = chordsBank.find(c=>c[0]===guessedName);
+    if(guessedChord) guessedSet = guessedChord[1];
+  }
+  let prevIdx = 0;
+  target.notes.forEach(note=>{
+    let base = noteNames.indexOf(note)+1;
+    let idx = base;
+    if(idx <= prevIdx) idx += 12;
+    prevIdx = idx;
+    if(keyEls[idx] && !guessedSet.includes(note)){
+      keyEls[idx].classList.remove('selected');
+      keyEls[idx].classList.add('wrong');
+    }
+  });
 }
 
 startBtn.addEventListener('click', startRound);

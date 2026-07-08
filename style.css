@@ -139,6 +139,7 @@ button.secondary{
 .white-key.correct{background:var(--success);}
 .white-key.reveal{background:var(--warning);}
 .white-key.root{background:var(--danger);}
+.white-key.wrong{background:var(--danger);}
 .black-key{
   position:absolute;
   top:0;
@@ -153,6 +154,7 @@ button.secondary{
 .black-key.correct{background:var(--success);}
 .black-key.reveal{background:var(--warning);}
 .black-key.root{background:var(--danger);}
+.black-key.wrong{background:var(--danger);}
 
 .note-grid{
   display:grid;

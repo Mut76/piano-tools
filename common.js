@@ -50,24 +50,6 @@ function scaleIndices(rootIdx, type){
   seq.push(rootIdx + 12 + 1);
   return seq;
 }
-function playScaleSequence(indices){
-  const ctx = getCtx();
-  const now = ctx.currentTime;
-  indices.forEach((idx,i)=>{
-    const t0 = now + i*0.22;
-    const freq = noteFreq(idx);
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.linearRampToValueAtTime(0.22, t0+0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.3);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0+0.32);
-  });
-}
 
 // --- Rendu clavier générique : 2 octaves = 24 touches ---
 function buildKeyboard(containerEl, onKeyClick){
@@ -110,20 +92,10 @@ function buildKeyboard(containerEl, onKeyClick){
 
 function resetKeyColors(keyEls){
   Object.values(keyEls).forEach(el=>{
-    el.classList.remove('selected','correct','reveal','root');
+    el.classList.remove('selected','correct','reveal','root','wrong');
   });
 }
 
-// --- Sons ---
-let audioCtx = null;
-function getCtx(){
-  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return audioCtx;
-}
-function noteFreq(idx){
-  const semitone = idx-1;
-  return 261.63 * Math.pow(2, semitone/12); // C4 = idx 1
-}
 function chordIndices(notes){
   let prevIdx = 0;
   return notes.map(note=>{
@@ -134,40 +106,57 @@ function chordIndices(notes){
     return idx;
   });
 }
+
+// --- Echantillons piano reels (octaves 3 et 4) ---
+const audioCache = {};
+function sampleFileForIdx(idx){
+  const note = idxToNote(idx);
+  const octave = idx<=12 ? 3 : 4;
+  return 'sons/octave'+octave+'/note-'+note+octave+'.mp3';
+}
+function getSampleAudio(idx){
+  if(!audioCache[idx]){
+    const a = new Audio(sampleFileForIdx(idx));
+    a.preload = 'auto';
+    audioCache[idx] = a;
+  }
+  return audioCache[idx];
+}
+function playNoteIdx(idx, volume){
+  const base = getSampleAudio(idx);
+  const node = base.cloneNode();
+  node.volume = volume===undefined ? 1 : volume;
+  node.play().catch(()=>{});
+  return node;
+}
 function playChordNotes(indices){
-  const ctx = getCtx();
-  const now = ctx.currentTime;
-  indices.forEach(idx=>{
-    const freq = noteFreq(idx);
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(0.2, now+0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now+1.2);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now+1.3);
-  });
+  indices.forEach(idx=>playNoteIdx(idx));
+}
+
+let scaleTimeouts = [];
+let scaleNodes = [];
+function stopScheduled(){
+  scaleTimeouts.forEach(t=>clearTimeout(t));
+  scaleNodes.forEach(n=>{ try{ n.pause(); }catch(e){} });
+  scaleTimeouts = [];
+  scaleNodes = [];
 }
 function playScaleSound(indices){
-  const ctx = getCtx();
-  const now = ctx.currentTime;
+  stopScheduled();
   indices.forEach((idx,i)=>{
-    const t0 = now + i*0.14;
-    const freq = noteFreq(idx);
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.linearRampToValueAtTime(0.22, t0+0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.3);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0+0.32);
+    const t = setTimeout(()=>{
+      const node = playNoteIdx(idx);
+      scaleNodes.push(node);
+    }, i*140);
+    scaleTimeouts.push(t);
   });
+}
+
+// --- Sons synthetises (feedback reussite/erreur, pas des notes de piano) ---
+let audioCtx = null;
+function getCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
 }
 function playSuccessSound(){
   const ctx = getCtx();

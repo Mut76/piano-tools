@@ -10,6 +10,8 @@
 
 <h1>Gammes</h1>
 
+<button class="footer-btn secondary" id="homeBtn">← Accueil</button>
+
 <div class="message">Choisis une note fondamentale et le type de gamme.</div>
 
 <div class="note-grid" id="noteGrid"></div>
@@ -19,9 +21,11 @@
   <button class="state-btn" data-type="mineur">Mineur</button>
 </div>
 
-<div class="keyboard" id="keyboard"></div>
+<div class="status" id="scaleLabelWrap" style="display:none;">
+  <div class="chord-name idle" id="scaleLabel"></div>
+</div>
 
-<button class="footer-btn secondary" id="settingsBtn">Accueil</button>
+<div class="keyboard" id="keyboard"></div>
 
 <script src="common.js"></script>
 <script>
@@ -72,9 +76,22 @@ function drawScale(){
     }
   }
   playScaleSound(playedIdx);
+
+  const scaleLabelWrap = document.getElementById('scaleLabelWrap');
+  const scaleLabel = document.getElementById('scaleLabel');
+  let mainLabel, relativeLabel;
+  if(chosenType === 'majeur'){
+    mainLabel = rootNote;
+    relativeLabel = noteNames[(chosenNote+9)%12] + 'm';
+  } else {
+    mainLabel = rootNote + 'm';
+    relativeLabel = noteNames[(chosenNote+3)%12];
+  }
+  scaleLabel.textContent = mainLabel + ' (' + relativeLabel + ')';
+  scaleLabelWrap.style.display = 'block';
 }
 
-document.getElementById('settingsBtn').addEventListener('click', ()=>{ window.location.href = 'index.html'; });
+document.getElementById('homeBtn').addEventListener('click', ()=>{ window.location.href = 'index.html'; });
 </script>
 
 </body>
