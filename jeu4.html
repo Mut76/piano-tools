@@ -3,95 +3,182 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>Gammes</title>
+<title>Devine le dessin</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>Gammes</h1>
+<h1>Devine le dessin de l'accord</h1>
 
 <button class="footer-btn secondary" id="homeBtn">← Accueil</button>
 
-<div class="message">Choisis une note fondamentale et le type de gamme.</div>
-
-<div class="note-grid" id="noteGrid"></div>
-
-<div class="state-row" id="typeRow">
-  <button class="state-btn selected" data-type="majeur">Majeur</button>
-  <button class="state-btn" data-type="mineur">Mineur</button>
+<div class="panel" id="configPanel">
+  <div class="row" style="display:block;">
+    <label>Formes jouées</label>
+    <div class="toggle-row" id="formsToggle" style="margin-top:6px;">
+      <button class="toggle-btn selected" data-form="0">Fondamentale</button>
+      <button class="toggle-btn selected" data-form="1">Rev1</button>
+      <button class="toggle-btn selected" data-form="2">Rev2</button>
+    </div>
+  </div>
+  <div class="row">
+    <label for="duree">Temps (secondes)</label>
+    <input type="number" id="duree" value="15" min="3" max="120">
+  </div>
+  <div class="row">
+    <button id="startBtn">Commencer</button>
+  </div>
 </div>
 
-<div class="status" id="scaleLabelWrap" style="display:none;">
-  <div class="chord-name idle" id="scaleLabel"></div>
+<div class="status">
+  <div class="chord-name idle" id="chordName">Prêt ?</div>
 </div>
 
 <div class="keyboard" id="keyboard"></div>
 
+<div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+
+<div class="message" id="message">Configure puis appuie sur Commencer.</div>
+
+<button class="footer-btn secondary" id="nextBtn" style="display:none;">Accord suivant</button>
+
 <script src="common.js"></script>
 <script>
 const keyboardEl = document.getElementById('keyboard');
-const keyEls = buildKeyboard(keyboardEl, null);
+let keyEls = buildKeyboard(keyboardEl, onKeyClick);
 
-const noteGridEl = document.getElementById('noteGrid');
-let chosenNote = null;
-let chosenType = 'majeur';
+let selected = new Set();
+let target = null;
+let timerInterval = null;
+let timeLeft = 0;
+let duration = 15;
+let roundActive = false;
 
-noteNames.forEach((n, i)=>{
-  const btn = document.createElement('div');
-  btn.className = 'note-btn';
-  btn.textContent = n;
-  btn.dataset.note = n;
+const chordNameEl = document.getElementById('chordName');
+const messageEl = document.getElementById('message');
+const timerFillEl = document.getElementById('timerFill');
+const startBtn = document.getElementById('startBtn');
+const nextBtn = document.getElementById('nextBtn');
+const homeBtn = document.getElementById('homeBtn');
+const configPanel = document.getElementById('configPanel');
+
+const formToggleBtns = document.querySelectorAll('#formsToggle .toggle-btn');
+formToggleBtns.forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    noteGridEl.querySelectorAll('.note-btn').forEach(b=>b.classList.remove('selected'));
-    btn.classList.add('selected');
-    chosenNote = i;
-    drawScale();
-  });
-  noteGridEl.appendChild(btn);
-});
-
-document.querySelectorAll('#typeRow .state-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('#typeRow .state-btn').forEach(b=>b.classList.remove('selected'));
-    btn.classList.add('selected');
-    chosenType = btn.dataset.type;
-    drawScale();
+    const selectedCount = document.querySelectorAll('#formsToggle .toggle-btn.selected').length;
+    if(btn.classList.contains('selected') && selectedCount<=1) return; // garder au moins 1 forme active
+    btn.classList.toggle('selected');
   });
 });
-
-function drawScale(){
-  resetKeyColors(keyEls);
-  if(chosenNote===null) return;
-  const scaleNotes = getScaleNotes(chosenNote, chosenType);
-  const rootNote = noteNames[chosenNote];
-  const playedIdx = [];
-  for(let idx=1; idx<=24; idx++){
-    const note = idxToNote(idx);
-    if(note === rootNote){
-      keyEls[idx].classList.add('root');
-      playedIdx.push(idx);
-    } else if(scaleNotes.includes(note)){
-      keyEls[idx].classList.add('selected');
-      playedIdx.push(idx);
-    }
-  }
-  playScaleSound(playedIdx);
-
-  const scaleLabelWrap = document.getElementById('scaleLabelWrap');
-  const scaleLabel = document.getElementById('scaleLabel');
-  let mainLabel, relativeLabel;
-  if(chosenType === 'majeur'){
-    mainLabel = rootNote;
-    relativeLabel = noteNames[(chosenNote+9)%12] + 'm';
-  } else {
-    mainLabel = rootNote + 'm';
-    relativeLabel = noteNames[(chosenNote+3)%12];
-  }
-  scaleLabel.textContent = mainLabel + ' (' + relativeLabel + ')';
-  scaleLabelWrap.style.display = 'block';
+function getAllowedForms(){
+  return Array.from(formToggleBtns)
+    .filter(b=>b.classList.contains('selected'))
+    .map(b=>parseInt(b.dataset.form,10));
 }
 
-document.getElementById('homeBtn').addEventListener('click', ()=>{ window.location.href = 'index.html'; });
+function pickTarget(){
+  const allowedForms = getAllowedForms();
+  const chord = chordsBank[Math.floor(Math.random()*chordsBank.length)];
+  const formIndex = allowedForms[Math.floor(Math.random()*allowedForms.length)];
+  const notes = chord[formIndex+1];
+  return { name: chord[0], formIndex, notes };
+}
+
+function startRound(){
+  duration = parseInt(document.getElementById('duree').value, 10) || 15;
+  configPanel.style.display = 'none';
+  nextBtn.style.display = 'none';
+  messageEl.textContent = "Clique les 3 touches de l'accord, de la plus grave à la plus aiguë.";
+  selected.clear();
+  resetKeyColors(keyEls);
+
+  target = pickTarget();
+  chordNameEl.textContent = formLabel(target.name, target.formIndex);
+  chordNameEl.className = 'chord-name';
+
+  timeLeft = duration;
+  timerFillEl.style.width = '100%';
+  roundActive = true;
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    timeLeft -= 0.1;
+    timerFillEl.style.width = Math.max(0,(timeLeft/duration*100))+'%';
+    if(timeLeft<=0){
+      clearInterval(timerInterval);
+      endRound(false);
+    }
+  }, 100);
+}
+
+function onKeyClick(idx){
+  if(!roundActive) return;
+  const el = keyEls[idx];
+  if(selected.has(idx)){
+    selected.delete(idx);
+    el.classList.remove('selected');
+  } else {
+    if(selected.size>=3) return;
+    selected.add(idx);
+    el.classList.add('selected');
+    playNoteIdx(idx);
+  }
+  if(selected.size===3){
+    checkAnswer();
+  }
+}
+
+function checkAnswer(){
+  const sorted = Array.from(selected).sort((a,b)=>a-b);
+  const clickedNotes = sorted.map(idxToNote);
+  const isCorrect = clickedNotes.every((n,i)=> n === target.notes[i]);
+
+  if(isCorrect){
+    endRound(true);
+  } else {
+    messageEl.textContent = "Pas encore bon, réessaie (reclique une touche pour la désélectionner).";
+    if(navigator.vibrate) navigator.vibrate(80);
+    playErrorSound();
+  }
+}
+
+function endRound(victoire){
+  roundActive = false;
+  clearInterval(timerInterval);
+
+  if(victoire){
+    playSuccessSound();
+    chordNameEl.textContent = formLabel(target.name, target.formIndex);
+    chordNameEl.className = 'chord-name ok';
+    messageEl.textContent = "Bravo, c'est le bon accord !";
+    Array.from(selected).forEach(idx=>{
+      keyEls[idx].classList.remove('selected');
+      keyEls[idx].classList.add('correct');
+    });
+    playChordNotes(chordIndices(target.notes));
+  } else {
+    chordNameEl.textContent = formLabel(target.name, target.formIndex);
+    chordNameEl.className = 'chord-name timeout';
+    messageEl.textContent = "Temps écoulé. Voici les touches attendues :";
+    playErrorSound();
+    resetKeyColors(keyEls);
+    let prevIdx = 0;
+    target.notes.forEach(note=>{
+      let base = noteNames.indexOf(note)+1;
+      let idx = base;
+      if(idx <= prevIdx) idx += 12;
+      prevIdx = idx;
+      if(keyEls[idx]) keyEls[idx].classList.add('reveal');
+    });
+    playChordNotes(chordIndices(target.notes));
+  }
+
+  nextBtn.style.display = 'block';
+}
+
+startBtn.addEventListener('click', startRound);
+nextBtn.addEventListener('click', startRound);
+homeBtn.addEventListener('click', ()=>{ window.location.href = 'index.html'; });
 </script>
 
 </body>
