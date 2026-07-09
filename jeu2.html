@@ -220,21 +220,15 @@ function endRound(victoire){
 }
 
 function highlightMismatches(){
-  let guessedSet = [];
-  if(chosenNote!==null && chosenQuality!==null){
-    const guessedName = chosenNote + (chosenQuality==='mineur' ? 'm' : '');
-    const guessedChord = chordsBank.find(c=>c[0]===guessedName);
-    if(guessedChord) guessedSet = guessedChord[1];
-  }
-  let prevIdx = 0;
-  target.notes.forEach(note=>{
-    let base = noteNames.indexOf(note)+1;
-    let idx = base;
-    if(idx <= prevIdx) idx += 12;
-    prevIdx = idx;
-    if(keyEls[idx] && !guessedSet.includes(note)){
-      keyEls[idx].classList.remove('selected');
-      keyEls[idx].classList.add('wrong');
+  const guessedName = chosenNote + (chosenQuality==='mineur' ? 'm' : '');
+  const guessedChord = chordsBank.find(c=>c[0]===guessedName);
+  if(!guessedChord) return;
+  const guessedNotes = guessedChord[1];
+  const guessedIdx = chordIndices(guessedNotes);
+  guessedNotes.forEach((note,i)=>{
+    if(!target.notes.includes(note)){
+      const idx = guessedIdx[i];
+      if(keyEls[idx]) keyEls[idx].classList.add('wrong');
     }
   });
 }

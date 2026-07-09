@@ -138,7 +138,7 @@ function checkAnswer(){
   } else {
     messageEl.textContent = "Pas encore bon, réessaie (reclique une touche pour la désélectionner).";
     if(navigator.vibrate) navigator.vibrate(80);
-    playErrorSound();
+    setTimeout(playErrorSound, 250);
   }
 }
 
@@ -147,7 +147,10 @@ function endRound(victoire){
   clearInterval(timerInterval);
 
   if(victoire){
-    playSuccessSound();
+    setTimeout(()=>{
+      playSuccessSound();
+      playChordNotes(chordIndices(target.notes));
+    }, 250);
     chordNameEl.textContent = formLabel(target.name, target.formIndex);
     chordNameEl.className = 'chord-name ok';
     messageEl.textContent = "Bravo, c'est le bon accord !";
@@ -155,7 +158,6 @@ function endRound(victoire){
       keyEls[idx].classList.remove('selected');
       keyEls[idx].classList.add('correct');
     });
-    playChordNotes(chordIndices(target.notes));
   } else {
     chordNameEl.textContent = formLabel(target.name, target.formIndex);
     chordNameEl.className = 'chord-name timeout';
