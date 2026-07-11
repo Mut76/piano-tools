@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Roue des accords</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .wheel-wrap{
+    width:100%;
+    max-width:400px;
+    margin:0 auto 16px;
+  }
+  .wedge{
+    fill:var(--panel);
+    stroke:var(--bg);
+    stroke-width:2;
+    cursor:pointer;
+  }
+  .wedge.selected{ fill:var(--accent); }
+  .wedge.compat-dom{ fill:#3a7a4a; }
+  .wedge.compat-sub{ fill:#7a5a2a; }
+  .wedge.compat-rel{ fill:#5a3a7a; }
+  .wedge-label{
+    fill:var(--text);
+    font-size:15px;
+    font-weight:600;
+    text-anchor:middle;
+    dominant-baseline:middle;
+    pointer-events:none;
+  }
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    width:100%;
+    max-width:480px;
+    margin-bottom:14px;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .legend-item{ display:flex; align-items:center; gap:5px; }
+  .legend-dot{ width:12px; height:12px; border-radius:3px; display:inline-block; }
+</style>
+</head>
+<body>
+
+<h1>Roue des accords</h1>
+
+<button class="footer-btn secondary" id="homeBtn">← Accueil</button>
+
+<div class="message" id="msg">Clique un accord sur la roue (majeur à l'extérieur, mineur à l'intérieur).</div>
+
+<div class="wheel-wrap">
+  <svg id="wheelSvg" viewBox="0 0 340 340" width="100%"></svg>
+</div>
+
+<div class="state-row" id="startStateRow" style="display:none;">
+  <button class="state-btn" data-state="0">Fondamentale</button>
+  <button class="state-btn" data-state="1">Rev1</button>
+  <button class="state-btn" data-state="2">Rev2</button>
+</div>
+
+<div class="legend" id="legendArea" style="display:none;">
+  <div class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span>Sélectionné</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#3a7a4a;"></span>Dominante (V)</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#7a5a2a;"></span>Sous-dominante (IV)</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#5a3a7a;"></span>Relatif</div>
+</div>
+
+<div id="resultArea"></div>
+
+<script src="common.js"></script>
+<script>
+const wheelMajors = ['C','G','D','A','E','B','F#','C#','G#','D#','A#','F'];
+
+function relativeMinorLetter(majorLetter){
+  const idx = noteNames.indexOf(majorLetter);
+  return noteNames[(idx+9)%12] + 'm';
+}
+function relativeMajorLetter(minorLetterWithM){
+  const root = minorLetterWithM.slice(0,-1);
+  const idx = noteNames.indexOf(root);
+  return noteNames[(idx+3)%12];
+}
+
+const wheelMinors = wheelMajors.map(relativeMinorLetter);
+
+// position lookup: nom -> {p, ring}
+const positionLookup = {};
+wheelMajors.forEach((name,p)=>{ positionLookup[name] = {p, ring:'major'}; });
+wheelMinors.forEach((name,p)=>{ positionLookup[name] = {p, ring:'minor'}; });
+
+function polar(cx,cy,r,angleDeg){
+  const rad = (angleDeg-90) * Math.PI/180;
+  return { x: cx + r*Math.cos(rad), y: cy + r*Math.sin(rad) };
+}
+function wedgePath(cx,cy,rOuter,rInner,startDeg,endDeg){
+  const p1 = polar(cx,cy,rInner,startDeg);
+  const p2 = polar(cx,cy,rOuter,startDeg);
+  const p3 = polar(cx,cy,rOuter,endDeg);
+  const p4 = polar(cx,cy,rInner,endDeg);
+  return `M ${p1.x} ${p1.y} L ${p2.x} ${p2.y} A ${rOuter} ${rOuter} 0 0 1 ${p3.x} ${p3.y} L ${p4.x} ${p4.y} A ${rInner} ${rInner} 0 0 0 ${p1.x} ${p1.y} Z`;
+}
+
+const svg = document.getElementById('wheelSvg');
+const CX=170, CY=170;
+const wedgeEls = {}; // name -> path element
+
+function buildWheel(){
+  svg.innerHTML = '';
+  for(let i=0;i<12;i++){
+    const startDeg = i*30-15;
+    const endDeg = i*30+15;
+    const midDeg = i*30;
+
+    // anneau majeur (exterieur)
+    const dOuter = wedgePath(CX,CY,160,102,startDeg,endDeg);
+    const pathOuter = document.createElementNS('http://www.w3.org/2000/svg','path');
+    pathOuter.setAttribute('d', dOuter);
+    pathOuter.setAttribute('class','wedge');
+    const nameOuter = wheelMajors[i];
+    pathOuter.addEventListener('click', ()=>selectChord(nameOuter));
+    svg.appendChild(pathOuter);
+    wedgeEls[nameOuter] = pathOuter;
+
+    const labelPosOuter = polar(CX,CY,131,midDeg);
+    const textOuter = document.createElementNS('http://www.w3.org/2000/svg','text');
+    textOuter.setAttribute('x', labelPosOuter.x);
+    textOuter.setAttribute('y', labelPosOuter.y);
+    textOuter.setAttribute('class','wedge-label');
+    textOuter.textContent = nameOuter;
+    textOuter.style.pointerEvents = 'none';
+    svg.appendChild(textOuter);
+
+    // anneau mineur (interieur)
+    const dInner = wedgePath(CX,CY,98,40,startDeg,endDeg);
+    const pathInner = document.createElementNS('http://www.w3.org/2000/svg','path');
+    pathInner.setAttribute('d', dInner);
+    pathInner.setAttribute('class','wedge');
+    const nameInner = wheelMinors[i];
+    pathInner.addEventListener('click', ()=>selectChord(nameInner));
+    svg.appendChild(pathInner);
+    wedgeEls[nameInner] = pathInner;
+
+    const labelPosInner = polar(CX,CY,69,midDeg);
+    const textInner = document.createElementNS('http://www.w3.org/2000/svg','text');
+    textInner.setAttribute('x', labelPosInner.x);
+    textInner.setAttribute('y', labelPosInner.y);
+    textInner.setAttribute('class','wedge-label');
+    textInner.textContent = nameInner;
+    textInner.style.pointerEvents = 'none';
+    svg.appendChild(textInner);
+  }
+}
+buildWheel();
+
+let selectedName = null;
+let selectedState = null;
+
+function resetWedgeColors(){
+  Object.values(wedgeEls).forEach(el=>{
+    el.classList.remove('selected','compat-dom','compat-sub','compat-rel');
+  });
+}
+
+function selectChord(name){
+  selectedName = name;
+  selectedState = null;
+  resetWedgeColors();
+  wedgeEls[name].classList.add('selected');
+  document.getElementById('startStateRow').style.display = 'flex';
+  document.querySelectorAll('#startStateRow .state-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('legendArea').style.display = 'none';
+  document.getElementById('resultArea').innerHTML = '';
+  document.getElementById('msg').textContent = 'Choisis la forme de départ pour ' + name + ' :';
+}
+
+document.querySelectorAll('#startStateRow .state-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#startStateRow .state-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedState = parseInt(btn.dataset.state,10);
+    showCompatibleChords();
+  });
+});
+
+function chordEntry(name){
+  return chordsBank.find(c=>c[0]===name);
+}
+
+function bestFormFor(fromIdx, candidateName){
+  const entry = chordEntry(candidateName);
+  let bestIdx = 0;
+  let bestCost = Infinity;
+  for(let f=0; f<3; f++){
+    const notes = entry[f+1];
+    const idxArr = chordIndices(notes);
+    const cost = fromIdx.reduce((sum,v,i)=> sum + Math.abs(v-idxArr[i]), 0);
+    if(cost < bestCost){ bestCost = cost; bestIdx = f; }
+  }
+  return bestIdx;
+}
+
+function drawMini(container, notes){
+  const keyEls = buildKeyboard(container, null);
+  const idxArr = chordIndices(notes);
+  idxArr.forEach(idx=>{ if(keyEls[idx]) keyEls[idx].classList.add('selected'); });
+}
+
+function showCompatibleChords(){
+  resetWedgeColors();
+  wedgeEls[selectedName].classList.add('selected');
+
+  const entry = chordEntry(selectedName);
+  const selectedNotes = entry[selectedState+1];
+  const selectedIdx = chordIndices(selectedNotes);
+
+  const pos = positionLookup[selectedName];
+  const p = pos.p;
+  const ring = pos.ring;
+
+  const domP = (p+1)%12;
+  const subP = (p-1+12)%12;
+  const domName = ring==='major' ? wheelMajors[domP] : wheelMinors[domP];
+  const subName = ring==='major' ? wheelMajors[subP] : wheelMinors[subP];
+  const relName = ring==='major' ? wheelMinors[p] : wheelMajors[p];
+
+  wedgeEls[domName].classList.add('compat-dom');
+  wedgeEls[subName].classList.add('compat-sub');
+  wedgeEls[relName].classList.add('compat-rel');
+
+  document.getElementById('legendArea').style.display = 'flex';
+  document.getElementById('msg').textContent = formLabel(selectedName, selectedState) + ' — accords compatibles :';
+
+  const resultArea = document.getElementById('resultArea');
+  resultArea.innerHTML = '';
+
+  function addBlock(label, roleLabel, name){
+    const bestForm = bestFormFor(selectedIdx, name);
+    const notes = chordEntry(name)[bestForm+1];
+    const block = document.createElement('div');
+    block.className = 'chord-block';
+    const lab = document.createElement('div');
+    lab.className = 'chord-block-label';
+    lab.textContent = roleLabel + ' — ' + formLabel(name, bestForm);
+    block.appendChild(lab);
+    const kb = document.createElement('div');
+    kb.className = 'keyboard';
+    block.appendChild(kb);
+    resultArea.appendChild(block);
+    drawMini(kb, notes);
+  }
+
+  addBlock('start', 'Dominante (V)', domName);
+  addBlock('start', 'Sous-dominante (IV)', subName);
+  addBlock('start', 'Relatif', relName);
+}
+
+document.getElementById('homeBtn').addEventListener('click', ()=>{ window.location.href = 'index.html'; });
+</script>
+
+</body>
+</html>
