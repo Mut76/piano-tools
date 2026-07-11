@@ -21,6 +21,7 @@
   .wedge.compat-dom{ fill:#3a7a4a; }
   .wedge.compat-sub{ fill:#7a5a2a; }
   .wedge.compat-rel{ fill:#5a3a7a; }
+  .wedge.compat-rel2{ fill:#3a5a7a; }
   .wedge-label{
     fill:var(--text);
     font-size:15px;
@@ -66,6 +67,7 @@
   <div class="legend-item"><span class="legend-dot" style="background:#3a7a4a;"></span>Dominante (V)</div>
   <div class="legend-item"><span class="legend-dot" style="background:#7a5a2a;"></span>Sous-dominante (IV)</div>
   <div class="legend-item"><span class="legend-dot" style="background:#5a3a7a;"></span>Relatif</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#3a5a7a;"></span>Voisins du relatif</div>
 </div>
 
 <div id="resultArea"></div>
@@ -202,10 +204,25 @@ function bestFormFor(fromIdx, candidateName){
   return bestIdx;
 }
 
-function drawMini(container, notes){
-  const keyEls = buildKeyboard(container, null);
+function drawMiniInto(kb, notes){
+  const keyEls = buildKeyboard(kb, null);
   const idxArr = chordIndices(notes);
   idxArr.forEach(idx=>{ if(keyEls[idx]) keyEls[idx].classList.add('selected'); });
+}
+
+function makeFormMini(label, name, formIdx){
+  const notes = chordEntry(name)[formIdx+1];
+  const formMini = document.createElement('div');
+  formMini.className = 'form-mini';
+  const miniLabel = document.createElement('div');
+  miniLabel.className = 'mini-label';
+  miniLabel.textContent = label;
+  const kb = document.createElement('div');
+  kb.className = 'keyboard keyboard-mini';
+  formMini.appendChild(miniLabel);
+  formMini.appendChild(kb);
+  drawMiniInto(kb, notes);
+  return formMini;
 }
 
 function showCompatibleChords(){
@@ -219,16 +236,21 @@ function showCompatibleChords(){
   const pos = positionLookup[selectedName];
   const p = pos.p;
   const ring = pos.ring;
+  const relRing = ring==='major' ? 'minor' : 'major';
 
   const domP = (p+1)%12;
   const subP = (p-1+12)%12;
   const domName = ring==='major' ? wheelMajors[domP] : wheelMinors[domP];
   const subName = ring==='major' ? wheelMajors[subP] : wheelMinors[subP];
   const relName = ring==='major' ? wheelMinors[p] : wheelMajors[p];
+  const relDomName = relRing==='major' ? wheelMajors[domP] : wheelMinors[domP];
+  const relSubName = relRing==='major' ? wheelMajors[subP] : wheelMinors[subP];
 
   wedgeEls[domName].classList.add('compat-dom');
   wedgeEls[subName].classList.add('compat-sub');
   wedgeEls[relName].classList.add('compat-rel');
+  wedgeEls[relDomName].classList.add('compat-rel2');
+  wedgeEls[relSubName].classList.add('compat-rel2');
 
   document.getElementById('legendArea').style.display = 'flex';
   document.getElementById('msg').textContent = formLabel(selectedName, selectedState) + ' — accords compatibles :';
@@ -236,25 +258,27 @@ function showCompatibleChords(){
   const resultArea = document.getElementById('resultArea');
   resultArea.innerHTML = '';
 
-  function addBlock(label, roleLabel, name){
-    const bestForm = bestFormFor(selectedIdx, name);
-    const notes = chordEntry(name)[bestForm+1];
-    const block = document.createElement('div');
-    block.className = 'chord-block';
-    const lab = document.createElement('div');
-    lab.className = 'chord-block-label';
-    lab.textContent = roleLabel + ' — ' + formLabel(name, bestForm);
-    block.appendChild(lab);
-    const kb = document.createElement('div');
-    kb.className = 'keyboard';
-    block.appendChild(kb);
-    resultArea.appendChild(block);
-    drawMini(kb, notes);
-  }
+  const relBestForm = bestFormFor(selectedIdx, relName);
 
-  addBlock('start', 'Dominante (V)', domName);
-  addBlock('start', 'Sous-dominante (IV)', subName);
-  addBlock('start', 'Relatif', relName);
+  const block = document.createElement('div');
+  block.className = 'chord-block';
+
+  const row1 = document.createElement('div');
+  row1.className = 'chord-forms-row';
+  row1.appendChild(makeFormMini('IV — ' + formLabel(subName, bestFormFor(selectedIdx, subName)), subName, bestFormFor(selectedIdx, subName)));
+  row1.appendChild(makeFormMini(formLabel(selectedName, selectedState), selectedName, selectedState));
+  row1.appendChild(makeFormMini('V — ' + formLabel(domName, bestFormFor(selectedIdx, domName)), domName, bestFormFor(selectedIdx, domName)));
+
+  const row2 = document.createElement('div');
+  row2.className = 'chord-forms-row';
+  row2.style.marginTop = '8px';
+  row2.appendChild(makeFormMini(formLabel(relSubName, bestFormFor(selectedIdx, relSubName)), relSubName, bestFormFor(selectedIdx, relSubName)));
+  row2.appendChild(makeFormMini('Rel. — ' + formLabel(relName, relBestForm), relName, relBestForm));
+  row2.appendChild(makeFormMini(formLabel(relDomName, bestFormFor(selectedIdx, relDomName)), relDomName, bestFormFor(selectedIdx, relDomName)));
+
+  block.appendChild(row1);
+  block.appendChild(row2);
+  resultArea.appendChild(block);
 }
 
 document.getElementById('homeBtn').addEventListener('click', ()=>{ window.location.href = 'index.html'; });
