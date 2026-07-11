@@ -135,6 +135,20 @@ function preloadAllSamples(){
   for(let idx=1; idx<=24; idx++){ getAudioBuffer(idx).catch(()=>{}); }
 }
 
+function getMasterBus(){
+  const ctx = getCtx();
+  if(!ctx._masterBus){
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -10;
+    comp.knee.value = 18;
+    comp.ratio.value = 6;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.15;
+    comp.connect(ctx.destination);
+    ctx._masterBus = comp;
+  }
+  return ctx._masterBus;
+}
 function playBufferAt(buffer, delaySec, volume){
   const ctx = getCtx();
   if(ctx.state === 'suspended') ctx.resume();
@@ -142,7 +156,7 @@ function playBufferAt(buffer, delaySec, volume){
   source.buffer = buffer;
   const gainNode = ctx.createGain();
   gainNode.gain.value = volume===undefined ? 1 : volume;
-  source.connect(gainNode).connect(ctx.destination);
+  source.connect(gainNode).connect(getMasterBus());
   const t0 = ctx.currentTime + (delaySec||0);
   source.start(t0);
   return source;
@@ -157,7 +171,11 @@ function playNoteIdx(idx, volume){
   }
 }
 function playChordNotes(indices){
-  indices.forEach(idx=>playNoteIdx(idx));
+  indices.forEach(idx=>{
+    const buf = audioBufferCache[idx];
+    if(buf){ playBufferAt(buf, 0, 0.75); }
+    else { getAudioBuffer(idx).then(b=>playBufferAt(b, 0, 0.75)); }
+  });
 }
 
 let scaleSources = [];
@@ -174,7 +192,7 @@ function playScaleSound(indices){
   indices.forEach((idx,i)=>{
     const buf = audioBufferCache[idx];
     if(!buf) return;
-    const source = playBufferAt(buf, i*0.14, 1);
+    const source = playBufferAt(buf, i*0.14, 0.8);
     if(source) scaleSources.push(source);
   });
 }
