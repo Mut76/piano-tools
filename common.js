@@ -162,7 +162,7 @@ function playBufferAt(buffer, delaySec, volume){
   return source;
 }
 function playNoteIdx(idx, volume){
-  const vol = volume===undefined ? 0.6 : volume;
+  const vol = volume===undefined ? 0.35 : volume;
   const buf = audioBufferCache[idx];
   if(buf){
     return playBufferAt(buf, 0, vol);
@@ -174,8 +174,8 @@ function playNoteIdx(idx, volume){
 function playChordNotes(indices){
   indices.forEach(idx=>{
     const buf = audioBufferCache[idx];
-    if(buf){ playBufferAt(buf, 0, 0.55); }
-    else { getAudioBuffer(idx).then(b=>playBufferAt(b, 0, 0.55)); }
+    if(buf){ playBufferAt(buf, 0, 0.35); }
+    else { getAudioBuffer(idx).then(b=>playBufferAt(b, 0, 0.35)); }
   });
 }
 
@@ -193,7 +193,7 @@ function playScaleSound(indices){
   indices.forEach((idx,i)=>{
     const buf = audioBufferCache[idx];
     if(!buf) return;
-    const source = playBufferAt(buf, i*0.14, 0.6);
+    const source = playBufferAt(buf, i*0.14, 0.4);
     if(source) scaleSources.push(source);
   });
 }
