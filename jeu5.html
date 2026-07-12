@@ -17,12 +17,12 @@
     stroke-width:2;
     cursor:pointer;
   }
-  .wedge.selected{ fill:#8D6B94; }
-  .wedge.compat-direct-sub{ fill:#f1ffc4; }
-  .wedge.compat-direct-dom{ fill:#dab894; }
+  .wedge.selected{ fill:#156064; }
+  .wedge.compat-direct-sub{ fill:#ed7d3a; }
+  .wedge.compat-direct-dom{ fill:#8cd867; }
   .wedge.compat-rel-sub{ fill:#C3A29E; }
-  .wedge.compat-rel-dom{ fill:#E8DBC5; }
-  .wedge.compat-rel{ fill:#c6e2e9; }
+  .wedge.compat-rel-dom{ fill:#dab894; }
+  .wedge.compat-rel{ fill:#8d6b94; }
   .wedge-label{
     fill:var(--text);
     font-size:15px;
@@ -67,12 +67,12 @@
 </div>
 
 <div class="legend" id="legendArea" style="display:none;">
-  <div class="legend-item"><span class="legend-dot" style="background:#8D6B94;"></span>Sélectionné</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#f1ffc4;"></span>Quarte (IV)</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#dab894;"></span>Quinte (V)</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#c6e2e9;"></span>Relatif</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#156064;"></span>Sélectionné</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ed7d3a;"></span>Quarte (IV)</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#8cd867;"></span>Quinte (V)</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#8d6b94;"></span>Relatif</div>
   <div class="legend-item"><span class="legend-dot" style="background:#C3A29E;"></span>Quarte du relatif</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#E8DBC5;"></span>Quinte du relatif</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#dab894;"></span>Quinte du relatif</div>
 </div>
 
 <div id="resultArea"></div>
@@ -83,12 +83,12 @@ const wheelMajors = ['C','G','D','A','E','B','F#','C#','G#','D#','A#','F'];
 
 // ==== COULEURS : modifie les codes hexadecimaux ici pour tout changer d'un coup ====
 const COLORS = {
-  selected:    '#8D6B94',
-  directSub:   '#82FF9E',
-  directDom:   '#231942',
-  relatif:     '#B185A7',
+  selected:    '#156064',
+  directSub:   '#ed7d3a',
+  directDom:   '#8cd867',
+  relatif:     '#8d6b94',
   relSub:      '#C3A29E',
-  relDom:      '#E8DBC5',
+  relDom:      '#dab894',
   harmonic:    '#d4af37'
 };
 
