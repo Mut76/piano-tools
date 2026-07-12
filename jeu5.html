@@ -17,12 +17,12 @@
     stroke-width:2;
     cursor:pointer;
   }
-  .wedge.selected{ fill:var(--accent); }
-  .wedge.compat-sub-major{ fill:#7fb3e0; }
-  .wedge.compat-dom-major{ fill:#1f4e79; }
-  .wedge.compat-sub-minor{ fill:#7a5a2a; }
-  .wedge.compat-dom-minor{ fill:#3a7a4a; }
-  .wedge.compat-rel{ fill:#5a3a7a; }
+  .wedge.selected{ fill:#8D6B94; }
+  .wedge.compat-direct-sub{ fill:#82FF9E; }
+  .wedge.compat-direct-dom{ fill:#231942; }
+  .wedge.compat-rel-sub{ fill:#C3A29E; }
+  .wedge.compat-rel-dom{ fill:#E8DBC5; }
+  .wedge.compat-rel{ fill:#B185A7; }
   .wedge-label{
     fill:var(--text);
     font-size:15px;
@@ -67,12 +67,12 @@
 </div>
 
 <div class="legend" id="legendArea" style="display:none;">
-  <div class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span>Sélectionné</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#7fb3e0;"></span>Quarte (IV) majeur</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#1f4e79;"></span>Quinte (V) majeur</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#7a5a2a;"></span>Quarte (IV) mineur</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#3a7a4a;"></span>Quinte (V) mineur</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#5a3a7a;"></span>Relatif</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#8D6B94;"></span>Sélectionné</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#82FF9E;"></span>Quarte (IV)</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#231942;"></span>Quinte (V)</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#B185A7;"></span>Relatif</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#C3A29E;"></span>Quarte du relatif</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#E8DBC5;"></span>Quinte du relatif</div>
 </div>
 
 <div id="resultArea"></div>
@@ -80,6 +80,17 @@
 <script src="common.js"></script>
 <script>
 const wheelMajors = ['C','G','D','A','E','B','F#','C#','G#','D#','A#','F'];
+
+// ==== COULEURS : modifie les codes hexadecimaux ici pour tout changer d'un coup ====
+const COLORS = {
+  selected:    '#8D6B94',
+  directSub:   '#82FF9E',
+  directDom:   '#231942',
+  relatif:     '#B185A7',
+  relSub:      '#C3A29E',
+  relDom:      '#E8DBC5',
+  harmonic:    '#d4af37'
+};
 
 function relativeMinorLetter(majorLetter){
   const idx = noteNames.indexOf(majorLetter);
@@ -157,24 +168,12 @@ buildWheel();
 let selectedName = null;
 let selectedState = null;
 
-const WEDGE_CLASSES = ['selected','compat-sub-major','compat-dom-major','compat-sub-minor','compat-dom-minor','compat-rel'];
+const WEDGE_CLASSES = ['selected','compat-direct-sub','compat-direct-dom','compat-rel-sub','compat-rel-dom','compat-rel'];
 
 function resetWedgeColors(){
   Object.values(wedgeEls).forEach(el=>{
     el.classList.remove(...WEDGE_CLASSES);
   });
-}
-
-function roleColorHex(ring, role){
-  if(ring==='major'){
-    return role==='sub' ? '#7fb3e0' : '#1f4e79';
-  }
-  return role==='sub' ? '#7a5a2a' : '#3a7a4a';
-}
-function roleWedgeClass(ring, role){
-  return role==='sub'
-    ? (ring==='major' ? 'compat-sub-major' : 'compat-sub-minor')
-    : (ring==='major' ? 'compat-dom-major' : 'compat-dom-minor');
 }
 
 function selectChord(name){
@@ -243,7 +242,7 @@ function makeHarmonicMini(color, name, formIdx){
   const miniLabel = document.createElement('div');
   miniLabel.className = 'mini-label';
   const suffix = formIdx===0 ? '' : ' rev'+formIdx;
-  miniLabel.innerHTML = '<span style="color:'+color+'">'+name+'</span> <span style="color:#d4af37">('+root+')</span>' + suffix;
+  miniLabel.innerHTML = '<span style="color:'+color+'">'+name+'</span> <span style="color:'+COLORS.harmonic+'">('+root+')</span>' + suffix;
   const kb = document.createElement('div');
   kb.className = 'keyboard keyboard-mini';
   formMini.appendChild(miniLabel);
@@ -281,11 +280,11 @@ function showCompatibleChords(){
   const relDomName = relRing==='major' ? wheelMajors[domP] : wheelMinors[domP];
   const relSubName = relRing==='major' ? wheelMajors[subP] : wheelMinors[subP];
 
-  wedgeEls[subName].classList.add(roleWedgeClass(ring,'sub'));
-  wedgeEls[domName].classList.add(roleWedgeClass(ring,'dom'));
+  wedgeEls[subName].classList.add('compat-direct-sub');
+  wedgeEls[domName].classList.add('compat-direct-dom');
   wedgeEls[relName].classList.add('compat-rel');
-  wedgeEls[relSubName].classList.add(roleWedgeClass(relRing,'sub'));
-  wedgeEls[relDomName].classList.add(roleWedgeClass(relRing,'dom'));
+  wedgeEls[relSubName].classList.add('compat-rel-sub');
+  wedgeEls[relDomName].classList.add('compat-rel-dom');
 
   document.getElementById('legendArea').style.display = 'flex';
   document.getElementById('msg').textContent = formLabel(selectedName, selectedState) + ' — accords compatibles :';
@@ -304,20 +303,20 @@ function showCompatibleChords(){
 
   const row1 = document.createElement('div');
   row1.className = 'chord-forms-row';
-  row1.appendChild(makeFormMini('IV — '+formLabel(subName,subForm), roleColorHex(ring,'sub'), subName, subForm));
-  row1.appendChild(makeFormMini(formLabel(selectedName, selectedState), 'var(--accent)', selectedName, selectedState));
-  row1.appendChild(makeFormMini('V — '+formLabel(domName,domForm), roleColorHex(ring,'dom'), domName, domForm));
+  row1.appendChild(makeFormMini(formLabel(subName,subForm), COLORS.directSub, subName, subForm));
+  row1.appendChild(makeFormMini(formLabel(selectedName, selectedState), COLORS.selected, selectedName, selectedState));
+  row1.appendChild(makeFormMini(formLabel(domName,domForm), COLORS.directDom, domName, domForm));
 
   const row2 = document.createElement('div');
   row2.className = 'chord-forms-row';
   row2.style.marginTop = '8px';
-  row2.appendChild(makeFormMini(formLabel(relSubName,relSubForm), roleColorHex(relRing,'sub'), relSubName, relSubForm));
-  row2.appendChild(makeFormMini('Rel. — '+formLabel(relName,relForm), '#5a3a7a', relName, relForm));
+  row2.appendChild(makeFormMini(formLabel(relSubName,relSubForm), COLORS.relSub, relSubName, relSubForm));
+  row2.appendChild(makeFormMini(formLabel(relName,relForm), COLORS.relatif, relName, relForm));
 
   if(relRing==='minor'){
-    row2.appendChild(makeHarmonicMini(roleColorHex(relRing,'dom'), relDomName, relDomForm));
+    row2.appendChild(makeHarmonicMini(COLORS.relDom, relDomName, relDomForm));
   } else {
-    row2.appendChild(makeFormMini(formLabel(relDomName,relDomForm), roleColorHex(relRing,'dom'), relDomName, relDomForm));
+    row2.appendChild(makeFormMini(formLabel(relDomName,relDomForm), COLORS.relDom, relDomName, relDomForm));
   }
 
   block.appendChild(row1);
