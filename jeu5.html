@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>Roue des accords</title>
+<title>Cercle des quintes</title>
 <link rel="stylesheet" href="style.css">
 <style>
   .wheel-wrap{
@@ -18,10 +18,11 @@
     cursor:pointer;
   }
   .wedge.selected{ fill:var(--accent); }
-  .wedge.compat-dom{ fill:#3a7a4a; }
-  .wedge.compat-sub{ fill:#7a5a2a; }
+  .wedge.compat-sub-major{ fill:#7fb3e0; }
+  .wedge.compat-dom-major{ fill:#1f4e79; }
+  .wedge.compat-sub-minor{ fill:#7a5a2a; }
+  .wedge.compat-dom-minor{ fill:#3a7a4a; }
   .wedge.compat-rel{ fill:#5a3a7a; }
-  .wedge.compat-rel2{ fill:#3a5a7a; }
   .wedge-label{
     fill:var(--text);
     font-size:15px;
@@ -42,11 +43,14 @@
   }
   .legend-item{ display:flex; align-items:center; gap:5px; }
   .legend-dot{ width:12px; height:12px; border-radius:3px; display:inline-block; }
+  #resultArea{ width:100%; }
+  .white-key.harmonic{ background:#d4af37; }
+  .black-key.harmonic{ background:#d4af37; }
 </style>
 </head>
 <body>
 
-<h1>Roue des accords</h1>
+<h1>Cercle des quintes</h1>
 
 <button class="footer-btn secondary" id="homeBtn">← Accueil</button>
 
@@ -64,10 +68,11 @@
 
 <div class="legend" id="legendArea" style="display:none;">
   <div class="legend-item"><span class="legend-dot" style="background:var(--accent);"></span>Sélectionné</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#3a7a4a;"></span>Dominante (V)</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#7a5a2a;"></span>Sous-dominante (IV)</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#7fb3e0;"></span>Quarte (IV) majeur</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#1f4e79;"></span>Quinte (V) majeur</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#7a5a2a;"></span>Quarte (IV) mineur</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#3a7a4a;"></span>Quinte (V) mineur</div>
   <div class="legend-item"><span class="legend-dot" style="background:#5a3a7a;"></span>Relatif</div>
-  <div class="legend-item"><span class="legend-dot" style="background:#3a5a7a;"></span>Voisins du relatif</div>
 </div>
 
 <div id="resultArea"></div>
@@ -80,15 +85,9 @@ function relativeMinorLetter(majorLetter){
   const idx = noteNames.indexOf(majorLetter);
   return noteNames[(idx+9)%12] + 'm';
 }
-function relativeMajorLetter(minorLetterWithM){
-  const root = minorLetterWithM.slice(0,-1);
-  const idx = noteNames.indexOf(root);
-  return noteNames[(idx+3)%12];
-}
 
 const wheelMinors = wheelMajors.map(relativeMinorLetter);
 
-// position lookup: nom -> {p, ring}
 const positionLookup = {};
 wheelMajors.forEach((name,p)=>{ positionLookup[name] = {p, ring:'major'}; });
 wheelMinors.forEach((name,p)=>{ positionLookup[name] = {p, ring:'minor'}; });
@@ -107,7 +106,7 @@ function wedgePath(cx,cy,rOuter,rInner,startDeg,endDeg){
 
 const svg = document.getElementById('wheelSvg');
 const CX=170, CY=170;
-const wedgeEls = {}; // name -> path element
+const wedgeEls = {};
 
 function buildWheel(){
   svg.innerHTML = '';
@@ -116,7 +115,6 @@ function buildWheel(){
     const endDeg = i*30+15;
     const midDeg = i*30;
 
-    // anneau majeur (exterieur)
     const dOuter = wedgePath(CX,CY,160,102,startDeg,endDeg);
     const pathOuter = document.createElementNS('http://www.w3.org/2000/svg','path');
     pathOuter.setAttribute('d', dOuter);
@@ -135,7 +133,6 @@ function buildWheel(){
     textOuter.style.pointerEvents = 'none';
     svg.appendChild(textOuter);
 
-    // anneau mineur (interieur)
     const dInner = wedgePath(CX,CY,98,40,startDeg,endDeg);
     const pathInner = document.createElementNS('http://www.w3.org/2000/svg','path');
     pathInner.setAttribute('d', dInner);
@@ -160,10 +157,24 @@ buildWheel();
 let selectedName = null;
 let selectedState = null;
 
+const WEDGE_CLASSES = ['selected','compat-sub-major','compat-dom-major','compat-sub-minor','compat-dom-minor','compat-rel'];
+
 function resetWedgeColors(){
   Object.values(wedgeEls).forEach(el=>{
-    el.classList.remove('selected','compat-dom','compat-sub','compat-rel');
+    el.classList.remove(...WEDGE_CLASSES);
   });
+}
+
+function roleColorHex(ring, role){
+  if(ring==='major'){
+    return role==='sub' ? '#7fb3e0' : '#1f4e79';
+  }
+  return role==='sub' ? '#7a5a2a' : '#3a7a4a';
+}
+function roleWedgeClass(ring, role){
+  return role==='sub'
+    ? (ring==='major' ? 'compat-sub-major' : 'compat-sub-minor')
+    : (ring==='major' ? 'compat-dom-major' : 'compat-dom-minor');
 }
 
 function selectChord(name){
@@ -204,24 +215,48 @@ function bestFormFor(fromIdx, candidateName){
   return bestIdx;
 }
 
-function drawMiniInto(kb, notes){
-  const keyEls = buildKeyboard(kb, null);
-  const idxArr = chordIndices(notes);
-  idxArr.forEach(idx=>{ if(keyEls[idx]) keyEls[idx].classList.add('selected'); });
-}
-
-function makeFormMini(label, name, formIdx){
+function makeFormMini(label, color, name, formIdx){
   const notes = chordEntry(name)[formIdx+1];
+  const idxArr = chordIndices(notes);
   const formMini = document.createElement('div');
   formMini.className = 'form-mini';
   const miniLabel = document.createElement('div');
   miniLabel.className = 'mini-label';
+  miniLabel.style.color = color;
   miniLabel.textContent = label;
   const kb = document.createElement('div');
   kb.className = 'keyboard keyboard-mini';
   formMini.appendChild(miniLabel);
   formMini.appendChild(kb);
-  drawMiniInto(kb, notes);
+  const keyEls = buildKeyboard(kb, null);
+  idxArr.forEach(idx=>{ if(keyEls[idx]) keyEls[idx].classList.add('selected'); });
+  return formMini;
+}
+
+// cas special : quinte de l'accord mineur relatif -> montre la note qui donne l'accord majeur (gamme harmonique)
+function makeHarmonicMini(color, name, formIdx){
+  const root = name.slice(0,-1);
+  const notes = chordEntry(name)[formIdx+1];
+  const idxArr = chordIndices(notes);
+  const formMini = document.createElement('div');
+  formMini.className = 'form-mini';
+  const miniLabel = document.createElement('div');
+  miniLabel.className = 'mini-label';
+  const suffix = formIdx===0 ? '' : ' rev'+formIdx;
+  miniLabel.innerHTML = '<span style="color:'+color+'">'+name+'</span> <span style="color:#d4af37">('+root+')</span>' + suffix;
+  const kb = document.createElement('div');
+  kb.className = 'keyboard keyboard-mini';
+  formMini.appendChild(miniLabel);
+  formMini.appendChild(kb);
+  const keyEls = buildKeyboard(kb, null);
+  idxArr.forEach(idx=>{ if(keyEls[idx]) keyEls[idx].classList.add('selected'); });
+
+  const minorThirdPitch = noteNames[(noteNames.indexOf(root)+3)%12];
+  const posInArray = notes.indexOf(minorThirdPitch);
+  const minorThirdIdx = idxArr[posInArray];
+  const majorThirdIdx = minorThirdIdx + 1;
+  if(keyEls[majorThirdIdx]) keyEls[majorThirdIdx].classList.add('harmonic');
+
   return formMini;
 }
 
@@ -246,11 +281,11 @@ function showCompatibleChords(){
   const relDomName = relRing==='major' ? wheelMajors[domP] : wheelMinors[domP];
   const relSubName = relRing==='major' ? wheelMajors[subP] : wheelMinors[subP];
 
-  wedgeEls[domName].classList.add('compat-dom');
-  wedgeEls[subName].classList.add('compat-sub');
+  wedgeEls[subName].classList.add(roleWedgeClass(ring,'sub'));
+  wedgeEls[domName].classList.add(roleWedgeClass(ring,'dom'));
   wedgeEls[relName].classList.add('compat-rel');
-  wedgeEls[relDomName].classList.add('compat-rel2');
-  wedgeEls[relSubName].classList.add('compat-rel2');
+  wedgeEls[relSubName].classList.add(roleWedgeClass(relRing,'sub'));
+  wedgeEls[relDomName].classList.add(roleWedgeClass(relRing,'dom'));
 
   document.getElementById('legendArea').style.display = 'flex';
   document.getElementById('msg').textContent = formLabel(selectedName, selectedState) + ' — accords compatibles :';
@@ -258,23 +293,32 @@ function showCompatibleChords(){
   const resultArea = document.getElementById('resultArea');
   resultArea.innerHTML = '';
 
-  const relBestForm = bestFormFor(selectedIdx, relName);
+  const subForm = bestFormFor(selectedIdx, subName);
+  const domForm = bestFormFor(selectedIdx, domName);
+  const relForm = bestFormFor(selectedIdx, relName);
+  const relSubForm = bestFormFor(selectedIdx, relSubName);
+  const relDomForm = bestFormFor(selectedIdx, relDomName);
 
   const block = document.createElement('div');
   block.className = 'chord-block';
 
   const row1 = document.createElement('div');
   row1.className = 'chord-forms-row';
-  row1.appendChild(makeFormMini('IV — ' + formLabel(subName, bestFormFor(selectedIdx, subName)), subName, bestFormFor(selectedIdx, subName)));
-  row1.appendChild(makeFormMini(formLabel(selectedName, selectedState), selectedName, selectedState));
-  row1.appendChild(makeFormMini('V — ' + formLabel(domName, bestFormFor(selectedIdx, domName)), domName, bestFormFor(selectedIdx, domName)));
+  row1.appendChild(makeFormMini('IV — '+formLabel(subName,subForm), roleColorHex(ring,'sub'), subName, subForm));
+  row1.appendChild(makeFormMini(formLabel(selectedName, selectedState), 'var(--accent)', selectedName, selectedState));
+  row1.appendChild(makeFormMini('V — '+formLabel(domName,domForm), roleColorHex(ring,'dom'), domName, domForm));
 
   const row2 = document.createElement('div');
   row2.className = 'chord-forms-row';
   row2.style.marginTop = '8px';
-  row2.appendChild(makeFormMini(formLabel(relSubName, bestFormFor(selectedIdx, relSubName)), relSubName, bestFormFor(selectedIdx, relSubName)));
-  row2.appendChild(makeFormMini('Rel. — ' + formLabel(relName, relBestForm), relName, relBestForm));
-  row2.appendChild(makeFormMini(formLabel(relDomName, bestFormFor(selectedIdx, relDomName)), relDomName, bestFormFor(selectedIdx, relDomName)));
+  row2.appendChild(makeFormMini(formLabel(relSubName,relSubForm), roleColorHex(relRing,'sub'), relSubName, relSubForm));
+  row2.appendChild(makeFormMini('Rel. — '+formLabel(relName,relForm), '#5a3a7a', relName, relForm));
+
+  if(relRing==='minor'){
+    row2.appendChild(makeHarmonicMini(roleColorHex(relRing,'dom'), relDomName, relDomForm));
+  } else {
+    row2.appendChild(makeFormMini(formLabel(relDomName,relDomForm), roleColorHex(relRing,'dom'), relDomName, relDomForm));
+  }
 
   block.appendChild(row1);
   block.appendChild(row2);
